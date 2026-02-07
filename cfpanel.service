@@ -1,0 +1,22 @@
+[Unit]
+Description=CF-Pro Panel - Cloudflare Tunnel Management
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/cf-panel
+Environment=FLASK_ENV=production
+Environment=FLASK_SECRET_KEY=change_this_to_random_string_min_32_chars
+ExecStart=/opt/cf-panel/venv/bin/python /opt/cf-panel/app.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/cfpanel/cfpanel.log
+StandardError=append:/var/log/cfpanel/cfpanel.err.log
+SyslogIdentifier=cfpanel
+
+[Install]
+WantedBy=multi-user.target

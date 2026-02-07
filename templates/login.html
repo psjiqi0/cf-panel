@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CF-Pro 登录</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="login-container">
+    <h1>CF-Pro 面板</h1>
+    <form id="login_form">
+      <label>用户名: <input id="username" required></label><br>
+      <label>密码: <input id="password" type="password" required></label><br>
+      <button type="submit">登录</button>
+    </form>
+    <div id="msg"></div>
+  </div>
+
+  <script>
+    document.getElementById('login_form').onsubmit = async (e) => {
+      e.preventDefault()
+      const username = document.getElementById('username').value
+      const password = document.getElementById('password').value
+      const msg = document.getElementById('msg')
+      msg.textContent = '登录中...'
+      const r = await fetch('/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password})})
+      const j = await r.json()
+      if (j.ok) {
+        window.location.href = '/'
+      } else {
+        msg.textContent = '登录失败: ' + j.error
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CF-Pro 面板</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-username="{{ username }}">
+  <div class="header">
+    <h1>🌐 CF-Pro 面板</h1>
+    <div class="user-info">
+      <span id="username_display"></span>
+      <button id="btn_change_pass">🔐 修改密码</button>
+      <button id="btn_logout">🚪 登出</button>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <section>
+      <h2>⚡ 临时隧道 (TryCloudflare)</h2>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <label>本地端口:</label>
+        <input id="temp_port" value="8080" style="width: 100px;">
+        <button id="btn_temp">启动隧道</button>
+      </div>
+      <pre id="temp_out"></pre>
+    </section>
+
+    <section>
+      <h2>➕ 注册并绑定新域名</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <div>
+          <label>API Token</label>
+          <input id="token" style="width: 100%;">
+        </div>
+        <div>
+          <label>Account ID</label>
+          <input id="account_id" style="width: 100%;">
+        </div>
+      </div>
+      <button id="btn_load_zones" style="width: 100%;">📥 加载我的域名列表</button>
+      <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label>选择域名 *</label>
+          <select id="zone_select" style="width: 100%;">
+            <option value="">-- 选择 --</option>
+          </select>
+        </div>
+        <div>
+          <label>子域 (可选)</label>
+          <input id="subdomain" style="width: 100%;">
+        </div>
+      </div>
+      <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label>本地端口 *</label>
+          <input id="local_port" value="8080" style="width: 100%;">
+        </div>
+        <div>
+          <label>服务类型</label>
+          <select id="service_type" style="width: 100%;">
+            <option value="http">HTTP</option>
+            <option value="https">HTTPS</option>
+            <option value="tcp">TCP</option>
+            <option value="ssh">SSH</option>
+            <option value="rdp">RDP</option>
+          </select>
+        </div>
+      </div>
+      <button id="btn_register" style="width: 100%; margin-top: 10px;">✅ 注册并绑定</button>
+      <pre id="register_out"></pre>
+    </section>
+
+    <section>
+      <h2>📋 已保存的域名</h2>
+      <button id="btn_list" style="width: 100%; margin-bottom: 15px;">🔄 刷新列表</button>
+      <div id="list"></div>
+    </section>
+
+    <section>
+      <h2>🎮 启动代理节点</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <div>
+          <label>节点类型</label>
+          <select id="node_type" style="width: 100%;">
+            <option>VMess</option>
+            <option>VLESS</option>
+          </select>
+        </div>
+        <div>
+          <label>域名 (可选)</label>
+          <input id="node_domain" style="width: 100%;">
+        </div>
+        <div>
+          <label>端口</label>
+          <input id="node_port" value="8080" style="width: 100%;">
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label>路径</label>
+          <input id="node_path" value="/ws" style="width: 100%;">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="btn_node" style="width: 100%;">▶️ 启动节点</button>
+        </div>
+      </div>
+      <pre id="node_out"></pre>
+    </section>
+  </div>
+
+  <!-- 修改密码模态框 -->
+  <div id="modal_change_pass" class="modal" style="display:none">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>🔐 修改密码</h2>
+      <div class="form-group">
+        <label>旧密码</label>
+        <input id="old_pass" type="password">
+      </div>
+      <div class="form-group">
+        <label>新密码 (至少8个字符)</label>
+        <input id="new_pass" type="password">
+      </div>
+      <button id="btn_save_pass" style="width: 100%; margin-top: 15px;">保存密码</button>
+      <pre id="pass_out"></pre>
+    </div>
+  </div>
+
+<script src="/static/main.js"></script>
+</body>
+</html>
