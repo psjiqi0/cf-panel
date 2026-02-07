@@ -47,13 +47,16 @@ else
   echo "$ENVFILE already exists"
 fi
 
-# install gunicorn if venv exists
-if [ -x "$INSTALL_DIR/venv/bin/pip" ]; then
-  sudo -u "$RUNTIME_USER" "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
-  sudo -u "$RUNTIME_USER" "$INSTALL_DIR/venv/bin/pip" install gunicorn
-  echo "Installed gunicorn into venv"
+# install gunicorn if venv exists, force install all dependencies
+if [ -d "$INSTALL_DIR/venv" ]; then
+  echo "Installing Python dependencies via venv..."
+  chmod +x "$INSTALL_DIR/venv/bin/python3" 2>/dev/null || true
+  "$INSTALL_DIR/venv/bin/python3" -m pip install --upgrade pip --quiet 2>/dev/null || true
+  "$INSTALL_DIR/venv/bin/python3" -m pip install -r "$INSTALL_DIR/requirements.txt" --quiet 2>/dev/null || true
+  "$INSTALL_DIR/venv/bin/python3" -m pip install gunicorn --quiet 2>/dev/null || true
+  echo "Installed dependencies and gunicorn into venv"
 else
-  echo "No venv found at $INSTALL_DIR/venv. Skipping gunicorn install."
+  echo "No venv found at $INSTALL_DIR/venv. Skipping dependency install."
 fi
 
 # install systemd unit
