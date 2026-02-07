@@ -1,0 +1,27 @@
+[Unit]
+Description=CF-Pro Panel - Cloudflare Tunnel Management
+After=network.target
+
+[Service]
+Type=simple
+User=cfpanel
+Group=cfpanel
+WorkingDirectory=/opt/cf-panel
+EnvironmentFile=/etc/cfpanel/env
+ExecStart=/opt/cf-panel/venv/bin/gunicorn --bind 127.0.0.1:5000 --workers 3 app:app
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=cfpanel
+RuntimeDirectoryMode=0750
+# Security hardening
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+SyslogIdentifier=cfpanel
+
+[Install]
+WantedBy=multi-user.target
