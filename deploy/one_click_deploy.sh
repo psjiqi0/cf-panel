@@ -48,29 +48,20 @@ if [ ! -d "$INSTALL_DIR" ]; then
 fi
 
 # Create venv and install requirements
-echo "Creating Python virtualenv"
-python3 -m venv "$INSTALL_DIR/venv" 2>&1 | grep -v "symlink" || true
+echo "Creating Python virtualenv..."
+python3 -m venv "$INSTALL_DIR/venv" 2>&1 | grep -v "symlink" | grep -v "WARNING" || true
 
-# Ensure pip is executable and install dependencies
-echo "Installing Python dependencies..."
-if [ -f "$INSTALL_DIR/venv/bin/pip" ]; then
-  chmod +x "$INSTALL_DIR/venv/bin/pip" "$INSTALL_DIR/venv/bin/python3" 2>/dev/null || true
-  
-  # Install pip upgrade
-  "$INSTALL_DIR/venv/bin/python3" -m pip install --upgrade pip --quiet 2>/dev/null || true
-  
-  # Install requirements
-  if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-    "$INSTALL_DIR/venv/bin/python3" -m pip install -r "$INSTALL_DIR/requirements.txt" --quiet 2>/dev/null || true
-  fi
-  
-  # Install gunicorn
-  "$INSTALL_DIR/venv/bin/python3" -m pip install gunicorn --quiet 2>/dev/null || true
-  
-  echo "✓ Python dependencies installed"
-else
-  echo "ERROR: venv creation failed. Aborting."; exit 1
+# Force install all dependencies
+echo "Installing Python dependencies (Flask, gunicorn, etc)..."
+chmod +x "$INSTALL_DIR/venv/bin/python3" 2>/dev/null || true
+
+"$INSTALL_DIR/venv/bin/python3" -m pip install --upgrade pip --quiet
+if [ -f "$INSTALL_DIR/requirements.txt" ]; then
+  "$INSTALL_DIR/venv/bin/python3" -m pip install -r "$INSTALL_DIR/requirements.txt" --quiet
 fi
+"$INSTALL_DIR/venv/bin/python3" -m pip install gunicorn --quiet
+
+echo "✓ All Python dependencies installed"
 
 # Make deploy scripts executable
 chmod +x "$INSTALL_DIR/deploy/setup_cfpanel.sh" || true
