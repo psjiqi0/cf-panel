@@ -49,15 +49,27 @@ fi
 
 # Create venv and install requirements
 echo "Creating Python virtualenv"
-python3 -m venv "$INSTALL_DIR/venv" --upgrade-deps 2>/dev/null || python3 -m venv "$INSTALL_DIR/venv"
-if [ -x "$INSTALL_DIR/venv/bin/pip" ]; then
-  "$INSTALL_DIR/venv/bin/pip" install --upgrade pip 2>/dev/null || true
+python3 -m venv "$INSTALL_DIR/venv" 2>&1 | grep -v "symlink" || true
+
+# Ensure pip is executable and install dependencies
+echo "Installing Python dependencies..."
+if [ -f "$INSTALL_DIR/venv/bin/pip" ]; then
+  chmod +x "$INSTALL_DIR/venv/bin/pip" "$INSTALL_DIR/venv/bin/python3" 2>/dev/null || true
+  
+  # Install pip upgrade
+  "$INSTALL_DIR/venv/bin/python3" -m pip install --upgrade pip --quiet 2>/dev/null || true
+  
+  # Install requirements
   if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-    "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" 2>/dev/null || true
+    "$INSTALL_DIR/venv/bin/python3" -m pip install -r "$INSTALL_DIR/requirements.txt" --quiet 2>/dev/null || true
   fi
-  "$INSTALL_DIR/venv/bin/pip" install gunicorn 2>/dev/null || true
+  
+  # Install gunicorn
+  "$INSTALL_DIR/venv/bin/python3" -m pip install gunicorn --quiet 2>/dev/null || true
+  
+  echo "✓ Python dependencies installed"
 else
-  echo "WARNING: venv pip not executable, skipping dependency install"
+  echo "ERROR: venv creation failed. Aborting."; exit 1
 fi
 
 # Make deploy scripts executable
