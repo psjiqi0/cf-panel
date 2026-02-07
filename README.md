@@ -1,5 +1,8 @@
 ## 📋 CF-Panel 启动使用教程
-
+一键安装命令
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/psjiqi0/cf-panel/main/deploy/one_click_deploy.sh)" -- --repo https://github.com/psjiqi0/cf-panel.git
+```
 ### 一、部署检查清单
 
 确认服务器上已完成以下步骤：
@@ -279,3 +282,4 @@ sudo rm -rf /var/log/cfpanel
 ---
 
 **祝你使用愉快！** 🎉---
+
