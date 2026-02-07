@@ -34,10 +34,7 @@ chmod 750 /var/log/cfpanel
 # create env file if not exists
 ENVFILE=/etc/cfpanel/env
 if [ ! -f "$ENVFILE" ]; then
-  SECRET=$(openssl rand -hex 24 || python - <<'PY'
-import os,sys
-print(os.urandom(24).hex())
-PY)
+  SECRET=$(openssl rand -hex 24)
   cat > "$ENVFILE" <<EOF
 FLASK_ENV=production
 FLASK_SECRET_KEY=$SECRET
