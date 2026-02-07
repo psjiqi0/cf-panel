@@ -1,134 +1,142 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 # install_binaries.sh
-# Detect architecture and download cloudflared + xray-core to /usr/local/bin (idempotent)
-# Run as root.
+# Download cloudflared and Xray binaries for the current architecture
+# Usage: install_binaries.sh [bin_dir]
+# Default bin_dir: /opt/cf-panel/bin
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# install into project root's bin directory (parent of deploy)
-INSTALL_DIR_BIN="$(dirname "$SCRIPT_DIR")/bin"
-TMPDIR=${TMPDIR:-/tmp}
-FORCE=0
+BIN_DIR="${1:-/opt/cf-panel/bin}"
+mkdir -p "$BIN_DIR"
+chmod 755 "$BIN_DIR"
+echo "Installing binaries into $BIN_DIR"
 
-if [ "${1:-}" = "--force" ]; then
-  FORCE=1
-fi
+# Detect architecture
+MACHINE="$(uname -m)"
+case "$MACHINE" in
+  aarch64|arm64)
+    CLOUD_ARCH="arm64"
+    XRAY_PATTERNS="arm64|aarch64"
+    ;;
+  armv7l|armv7)
+    CLOUD_ARCH="arm"
+    XRAY_PATTERNS="armv7|arm"
+    ;;
+  x86_64|amd64)
+    CLOUD_ARCH="amd64"
+    XRAY_PATTERNS="amd64|x86_64|64"
+    ;;
+  i386|i686)
+    CLOUD_ARCH="386"
+    XRAY_PATTERNS="386|32"
+    ;;
+  *)
+    echo "Unsupported architecture: $MACHINE" >&2
+    exit 1
+    ;;
+esac
 
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run as root"
+echo "Detected architecture: $MACHINE -> cloudflared: $CLOUD_ARCH, xray: $XRAY_PATTERNS"
+
+# Download cloudflared
+echo ""
+echo "=== Downloading cloudflared ==="
+CLOUD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$CLOUD_ARCH"
+echo "URL: $CLOUD_URL"
+
+if curl -fsSL -o "$BIN_DIR/cloudflared" "$CLOUD_URL"; then
+  chmod +x "$BIN_DIR/cloudflared"
+  echo "✓ Installed cloudflared -> $BIN_DIR/cloudflared"
+else
+  echo "✗ Failed to download cloudflared" >&2
   exit 1
 fi
 
-arch=$(uname -m)
-case "$arch" in
-  x86_64|amd64) CF_ARCH="amd64"; XRAY_PREF="linux-64";;
-  aarch64|arm64) CF_ARCH="arm64"; XRAY_PREF="linux-arm64-v8a";;
-  armv7l|armv7) CF_ARCH="arm"; XRAY_PREF="linux-arm32-v7a";;
-  armv6l) CF_ARCH="arm"; XRAY_PREF="linux-arm32-v5";;
-  *) echo "Unsupported architecture: $arch"; exit 1;;
-esac
+# Download and extract Xray
+echo ""
+echo "=== Downloading Xray ==="
 
-# helper to try a list of candidate assets from a GitHub latest/download base
-mkdir -p "$INSTALL_DIR_BIN"
-echo "Installing binaries into $INSTALL_DIR_BIN"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
 
-# cloudflared: try a list of common filenames under releases/latest/download
-CF_BIN="$INSTALL_DIR_BIN/cloudflared"
-CF_BASE="https://github.com/cloudflare/cloudflared/releases/latest/download"
-CF_CAND=(
-  "cloudflared-linux-${CF_ARCH}"
-  "cloudflared-linux-${CF_ARCH}.tgz"
-  "cloudflared-linux-${CF_ARCH}.deb"
-  "cloudflared-amd64.pkg"
-)
+API_URL="https://api.github.com/repos/XTLS/Xray-core/releases/latest"
+echo "Querying GitHub API: $API_URL"
 
-found=0
-for cand in "${CF_CAND[@]}"; do
-  url="$CF_BASE/$cand"
-  echo "Trying $url"
-  if curl -fL -o "$INSTALL_DIR_BIN/$cand" "$url"; then
-    echo "Downloaded $cand"
-    case "$cand" in
-      *.tgz)
-        tar -xzf "$INSTALL_DIR_BIN/$cand" -C "$TMPDIR" || { echo "extract failed"; continue; }
-        if [ -f "$TMPDIR/cloudflared" ]; then mv -f "$TMPDIR/cloudflared" "$CF_BIN"; fi
-        ;;
-      *.deb)
-        dpkg -x "$INSTALL_DIR_BIN/$cand" "$TMPDIR/debroot" || true
-        if [ -f "$TMPDIR/debroot/usr/bin/cloudflared" ]; then mv -f "$TMPDIR/debroot/usr/bin/cloudflared" "$CF_BIN"; fi
-        ;;
-      *)
-        mv -f "$INSTALL_DIR_BIN/$cand" "$CF_BIN" || true
-        ;;
-    esac
-    found=1
-    break
-  else
-    rm -f "$INSTALL_DIR_BIN/$cand" 2>/dev/null || true
-  fi
-done
+# Try to find a matching asset URL
+ASSET_URL=$(curl -s "$API_URL" \
+  | grep -Po '"browser_download_url":\s*"\K[^"]*' \
+  | grep -i linux \
+  | grep -E -i "$XRAY_PATTERNS" \
+  | head -n1 || true)
 
-if [ $found -eq 0 ]; then
-  echo "Failed to download any cloudflared candidate for ${CF_ARCH}"; exit 1
-fi
-chmod 755 "$CF_BIN" || true
-echo "Installed cloudflared -> $CF_BIN"
-
-# xray: try common filenames
-XRAY_BIN="$INSTALL_DIR_BIN/xray"
-XRAY_BASE="https://github.com/XTLS/Xray-core/releases/latest/download"
-
-XRAY_CAND=(
-  "Xray-${XRAY_PREF}.zip"
-  "Xray-linux-64.zip"
-  "Xray-linux-arm64-v8a.zip"
-  "Xray-linux-arm32-v7a.zip"
-  "Xray-linux-arm32-v5.zip"
-)
-
-found=0
-for cand in "${XRAY_CAND[@]}"; do
-  url="$XRAY_BASE/$cand"
-  echo "Trying $url"
-  if curl -fL -o "$INSTALL_DIR_BIN/$cand" "$url"; then
-    echo "Downloaded $cand"
-    mkdir -p "$TMPDIR/unpack"
-    if command -v unzip >/dev/null 2>&1; then
-      unzip -o "$INSTALL_DIR_BIN/$cand" -d "$TMPDIR/unpack" >/dev/null
-    else
-      python3 - <<PY
-import zipfile,sys
-with zipfile.ZipFile(sys.argv[1]) as z:
-    z.extractall(sys.argv[2])
-PY "$INSTALL_DIR_BIN/$cand" "$TMPDIR/unpack"
-    fi
-    src=$(find "$TMPDIR/unpack" -type f -name xray -o -name Xray | head -n1 || true)
-    if [ -n "$src" ] && [ -f "$src" ]; then
-      mv -f "$src" "$XRAY_BIN"
-      chmod 755 "$XRAY_BIN"
-      echo "Installed xray -> $XRAY_BIN"
-      found=1
+if [ -z "$ASSET_URL" ]; then
+  echo "Automatic detection failed, trying common fallback URLs..."
+  
+  candidates=(
+    "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-${CLOUD_ARCH}.zip"
+    "https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-${CLOUD_ARCH}.zip"
+    "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-${MACHINE}.zip"
+  )
+  
+  for cand in "${candidates[@]}"; do
+    echo "Checking: $cand"
+    if curl -fsSL -I "$cand" >/dev/null 2>&1; then
+      ASSET_URL="$cand"
+      echo "Found!"
       break
-    else
-      echo "xray binary not found inside $cand"
     fi
+  done
+fi
+
+if [ -z "$ASSET_URL" ]; then
+  echo "Could not find Xray asset for architecture $MACHINE" >&2
+  exit 1
+fi
+
+echo "Downloading: $ASSET_URL"
+ARCHIVE="$TMPDIR/xray.zip"
+
+if ! curl -fsSL -o "$ARCHIVE" "$ASSET_URL"; then
+  echo "Failed to download Xray" >&2
+  exit 1
+fi
+
+# Ensure unzip is available
+if ! command -v unzip >/dev/null 2>&1; then
+  echo "unzip not found, attempting to install..."
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y && apt-get install -y unzip
   else
-    rm -f "$INSTALL_DIR_BIN/$cand" 2>/dev/null || true
+    echo "Please install unzip and re-run this script" >&2
+    exit 1
   fi
-done
-
-if [ $found -eq 0 ]; then
-  echo "Failed to download any xray candidate for ${arch}"; exit 1
 fi
 
-echo "Binary installation complete. Files are in $INSTALL_DIR_BIN"
+# Extract archive
+echo "Extracting archive..."
+unzip -q "$ARCHIVE" -d "$TMPDIR"
 
-# final checks
-if command -v cloudflared >/dev/null 2>&1; then
-  echo "cloudflared: $(cloudflared --version 2>/dev/null | head -n1)"
-fi
-if command -v xray >/dev/null 2>&1; then
-  echo "xray: $(xray version 2>/dev/null || true)"
+# Find xray binary
+XRAY_BIN=""
+XRAY_BIN=$(find "$TMPDIR" -type f -iname 'xray' -executable | head -n1 || true)
+
+if [ -z "$XRAY_BIN" ]; then
+  XRAY_BIN=$(find "$TMPDIR" -type f -iname 'xray' | head -n1 || true)
 fi
 
-echo "Binary installation complete."
+if [ -z "$XRAY_BIN" ]; then
+  echo "Xray binary not found in archive. Contents:" >&2
+  ls -R "$TMPDIR" >&2
+  exit 1
+fi
+
+mv "$XRAY_BIN" "$BIN_DIR/xray"
+chmod +x "$BIN_DIR/xray"
+echo "✓ Installed xray -> $BIN_DIR/xray"
+
+echo ""
+echo "=== Verification ==="
+ls -lh "$BIN_DIR"
+
+echo ""
+echo "✓ All binaries installed successfully"
