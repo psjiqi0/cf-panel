@@ -49,10 +49,15 @@ fi
 
 # Create venv and install requirements
 echo "Creating Python virtualenv"
-python3 -m venv "$INSTALL_DIR/venv"
-"$INSTALL_DIR/venv/bin/pip" install --upgrade pip
-if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-  "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" || true
+python3 -m venv "$INSTALL_DIR/venv" --upgrade-deps 2>/dev/null || python3 -m venv "$INSTALL_DIR/venv"
+if [ -x "$INSTALL_DIR/venv/bin/pip" ]; then
+  "$INSTALL_DIR/venv/bin/pip" install --upgrade pip 2>/dev/null || true
+  if [ -f "$INSTALL_DIR/requirements.txt" ]; then
+    "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt" 2>/dev/null || true
+  fi
+  "$INSTALL_DIR/venv/bin/pip" install gunicorn 2>/dev/null || true
+else
+  echo "WARNING: venv pip not executable, skipping dependency install"
 fi
 
 # Make deploy scripts executable
